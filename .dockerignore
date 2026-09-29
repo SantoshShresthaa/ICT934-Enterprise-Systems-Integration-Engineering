@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+.env.example
+.DS_Store
+docs
+sql
+Dockerfile.vercel
+.dockerignore
