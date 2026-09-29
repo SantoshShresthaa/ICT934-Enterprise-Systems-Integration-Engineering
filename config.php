@@ -54,6 +54,33 @@ define('DB_USER', getenv('CRM_DB_USER') ?: 'root');
 define('DB_PASS', getenv('CRM_DB_PASS') ?: '');
 define('DB_CHARSET', 'utf8mb4');
 
+// Hosted MySQL (e.g. TiDB Cloud) rejects unencrypted connections; set
+// CRM_DB_SSL=true there. CRM_DB_SSL_CA overrides the CA bundle path.
+define('DB_SSL', filter_var(getenv('CRM_DB_SSL'), FILTER_VALIDATE_BOOLEAN));
+define('DB_SSL_CA', getenv('CRM_DB_SSL_CA') ?: '');
+
+/**
+ * Returns the CA bundle used to verify the database server's certificate.
+ *
+ * @throws RuntimeException if no CA bundle can be found
+ */
+function getSslCaPath(): string
+{
+    $candidates = DB_SSL_CA !== '' ? [DB_SSL_CA] : [
+        '/etc/ssl/certs/ca-certificates.crt', // Debian/Ubuntu (Docker image)
+        '/etc/ssl/cert.pem',                  // macOS, Alpine
+        '/etc/pki/tls/certs/ca-bundle.crt',   // RHEL/Fedora
+    ];
+
+    foreach ($candidates as $path) {
+        if (is_readable($path)) {
+            return $path;
+        }
+    }
+
+    throw new RuntimeException('CRM_DB_SSL is enabled but no readable CA bundle was found.');
+}
+
 /**
  * Returns a shared PDO connection (singleton) to the CRM data warehouse.
  *
@@ -82,6 +109,11 @@ function getDbConnection(): PDO
         PDO::ATTR_EMULATE_PREPARES   => false, // real prepared statements -> stronger injection protection
         PDO::ATTR_PERSISTENT         => false,
     ];
+
+    if (DB_SSL) {
+        $options[PDO::MYSQL_ATTR_SSL_CA] = getSslCaPath();
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
 
     $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
 
