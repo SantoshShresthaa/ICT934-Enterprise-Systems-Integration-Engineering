@@ -1,0 +1,115 @@
+CRM Data Warehouse ETL - 2026-09-30 13:00:07
+
+== 1. EXTRACT ============================================================
+  accounts.xml             85 records
+  sales_teams.xml          35 records
+  products.csv             7 records
+  sales_pipeline.csv       8800 records
+
+== 2. STAGE ==============================================================
+  Target database          host.docker.internal:3306/crm_sales
+  sales_pipeline_staging   8800 raw rows landed (unmodified)
+
+== 3. PROFILE (raw data, before cleaning) ================================
+
+  accounts.xml
+    column             missing  spaces distinct   case invalid  values
+    account                  0       0       85      0       0  
+    sector                   0       0       10      0       0  employment, entertainment, finance, marketing, medical, retail, services, software, technolgy, telecommunications
+    year_established         0       0       35      0       0  
+    revenue                  0       0       85      0       0  
+    employees                0       0       85      0       0  
+    office_location          0       0       15      0       0  Belgium, Brazil, China, Germany, Italy, Japan, Jordan, Kenya, Korea, Norway, Panama, Philipines, Poland, Romania, United States
+    subsidiary_of           70       0        7      0       0  Acme Corporation, Bubba Gump, Golddex, Inity, Massive Dynamic, Sonron, Warephase
+
+  sales_teams.xml
+    column             missing  spaces distinct   case invalid  values
+    sales_agent              0       0       35      0       0  
+    manager                  0       0        6      0       0  Cara Losch, Celia Rouche, Dustin Brinkmann, Melvin Marxen, Rocco Neubert, Summer Sewald
+    regional_office          0       0        3      0       0  Central, East, West
+
+  products.csv
+    column             missing  spaces distinct   case invalid  values
+    product                  0       0        7      0       0  GTK 500, GTX Basic, GTX Plus Basic, GTX Plus Pro, GTX Pro, MG Advanced, MG Special
+    series                   0       0        3      0       0  GTK, GTX, MG
+    sales_price              0       0        7      0       0  
+
+  sales_pipeline.csv
+    column             missing  spaces distinct   case invalid  values
+    opportunity_id           0       0     8800      0       0  
+    sales_agent              0       0       30      0       0  
+    product                  0       0        7      0       0  GTK 500, GTX Basic, GTX Plus Basic, GTX Plus Pro, GTXPro, MG Advanced, MG Special
+    account               1425       0       85      0       0  
+    deal_stage               0       0        4      0       0  Engaging, Lost, Prospecting, Won
+    engage_date            500       0      421      0       0  
+    close_date            2089       0      306      0       0  
+    close_value           2089       0     2051      0       0  
+
+  Key and reference checks
+    duplicate keys         accounts=0, sales_teams=0, products=0, sales_pipeline=0
+    sales_pipeline.csv.sales_agent -> sales_teams.xml all match
+    sales_pipeline.csv.product -> products.csv   1480 unmatched {GTXPro=1480}
+    sales_pipeline.csv.account -> accounts.xml   all match
+    accounts.xml.subsidiary_of -> accounts.xml   all match
+
+== 4. TRANSFORM (clean + validate) =======================================
+  Cleaning applied:
+         1 x  accounts.office_location: 'Philipines' -> 'Philippines'
+         4 x  accounts.sector: 'employment' -> 'Employment'
+         6 x  accounts.sector: 'entertainment' -> 'Entertainment'
+         8 x  accounts.sector: 'finance' -> 'Finance'
+         8 x  accounts.sector: 'marketing' -> 'Marketing'
+        12 x  accounts.sector: 'medical' -> 'Medical'
+        17 x  accounts.sector: 'retail' -> 'Retail'
+         5 x  accounts.sector: 'services' -> 'Services'
+         7 x  accounts.sector: 'software' -> 'Software'
+        12 x  accounts.sector: 'technolgy' -> 'Technology'
+         6 x  accounts.sector: 'telecommunications' -> 'Telecommunications'
+        70 x  accounts.subsidiary_of: empty -> NULL
+      1425 x  sales_pipeline.account: empty -> NULL
+      2089 x  sales_pipeline.close_date: empty -> NULL
+      2089 x  sales_pipeline.close_value: empty -> NULL
+       500 x  sales_pipeline.engage_date: empty -> NULL
+      1480 x  sales_pipeline.product: 'GTXPro' -> 'GTX Pro'
+  Validation:
+    accepted               7 products, 35 sales agents, 85 accounts, 8800 opportunities
+    rejected               0 records
+    warnings               0 records (loaded, flagged for review)
+
+== 5. QUALITY GATE =======================================================
+  accounts.xml             0/85 rejected (0.0%, limit 5.0%) [PASS]
+  sales_teams.xml          0/35 rejected (0.0%, limit 5.0%) [PASS]
+  products.csv             0/7 rejected (0.0%, limit 5.0%) [PASS]
+  sales_pipeline.csv       0/8800 rejected (0.0%, limit 5.0%) [PASS]
+
+== 6. LOAD ===============================================================
+  products                 7 rows loaded
+  sales_teams              35 rows loaded
+  accounts                 85 rows loaded
+  sales_pipeline           8800 rows loaded
+  Transaction              committed
+
+== 7. RECONCILE ==========================================================
+  Row counts (source = loaded + rejected)
+    accounts                 85 source = 85 loaded + 0 rejected            [OK]
+    sales_teams              35 source = 35 loaded + 0 rejected            [OK]
+    products                 7 source = 7 loaded + 0 rejected              [OK]
+    sales_pipeline           8800 source = 8800 loaded + 0 rejected        [OK]
+    staging                  8800 raw rows                                 [OK]
+  Value totals
+    Won value                warehouse 10005534.00 / staging (raw) 10005534.00 [OK]
+    Deal stages            Engaging=1589, Lost=2473, Prospecting=500, Won=4238
+  Referential integrity (orphan rows)
+    pipeline -> sales_teams  0 rows                                        [OK]
+    pipeline -> products     0 rows                                        [OK]
+    pipeline -> accounts     0 rows                                        [OK]
+    accounts -> parent       0 rows                                        [OK]
+  Business rules
+    closed deal incomplete   0 rows                                        [OK]
+    close before engage      0 rows                                        [OK]
+    open deal with close     0 rows                                        [OK]
+    invalid deal stage       0 rows                                        [OK]
+    negative amounts         0 rows                                        [OK]
+
+== ETL COMPLETED SUCCESSFULLY ============================================
+  Finished in 27.0s
