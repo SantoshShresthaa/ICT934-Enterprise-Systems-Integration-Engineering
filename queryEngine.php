@@ -24,6 +24,8 @@
  *   sales_opportunities_report      - Won/Lost Sales Opportunities Report
  *   establishment_year_revenue      - Establishment Year Revenue Analysis
  *   sales_opportunity_analysis      - Sales Opportunity Analysis by product
+ *   dashboard_summary               - Overview dashboard: KPIs, trends, funnel,
+ *                                     team performance and ETL data quality
  *
  * SECURE QUERY HANDLING (design decisions, documented for the report):
  *   1. Whitelisted actions   - the "action" parameter is matched against a
@@ -70,6 +72,7 @@ const ALLOWED_ACTIONS = [
     'sales_opportunities_report',
     'establishment_year_revenue',
     'sales_opportunity_analysis',
+    'dashboard_summary',
 ];
 
 // The warehouse also holds open deals (Prospecting/Engaging), but both
@@ -268,6 +271,127 @@ function getSalesOpportunityAnalysis(PDO $pdo, array $request): array
     return $stmt->fetchAll();
 }
 
+/**
+ * Runs a fixed (parameter-free) SELECT and returns all rows.
+ */
+function fetchAllRows(PDO $pdo, string $sql): array
+{
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
+    return $stmt->fetchAll();
+}
+
+/**
+ * Overview dashboard: every section is a fixed aggregate query, so the
+ * action accepts no filters and ignores any other request parameters.
+ */
+function getDashboardSummary(PDO $pdo): array
+{
+    $kpis = fetchAllRows($pdo, "SELECT
+                SUM(CASE WHEN sp.deal_stage = 'Won'  THEN 1 ELSE 0 END)                        AS won_count,
+                SUM(CASE WHEN sp.deal_stage = 'Lost' THEN 1 ELSE 0 END)                        AS lost_count,
+                SUM(CASE WHEN sp.deal_stage IN ('Prospecting', 'Engaging') THEN 1 ELSE 0 END) AS open_count,
+                COALESCE(SUM(CASE WHEN sp.deal_stage = 'Won' THEN sp.close_value END), 0)      AS won_revenue,
+                ROUND(AVG(CASE WHEN sp.deal_stage = 'Won' THEN sp.close_value END), 2)         AS average_won_value,
+                COALESCE(SUM(CASE WHEN sp.deal_stage IN ('Prospecting', 'Engaging')
+                                  THEN p.sales_price END), 0)                                  AS open_pipeline_value,
+                ROUND(AVG(CASE WHEN sp.deal_stage IN ('Won', 'Lost')
+                               THEN DATEDIFF(sp.close_date, sp.engage_date) END), 1)           AS average_sales_cycle_days
+            FROM sales_pipeline sp
+            LEFT JOIN products p ON p.product = sp.product")[0];
+
+    $monthlyRevenue = fetchAllRows($pdo, "SELECT
+                DATE_FORMAT(close_date, '%Y-%m')                                AS month,
+                SUM(CASE WHEN deal_stage = 'Won'  THEN 1 ELSE 0 END)            AS won_count,
+                SUM(CASE WHEN deal_stage = 'Lost' THEN 1 ELSE 0 END)            AS lost_count,
+                COALESCE(SUM(CASE WHEN deal_stage = 'Won' THEN close_value END), 0) AS won_revenue
+            FROM sales_pipeline
+            WHERE deal_stage IN ('Won', 'Lost') AND close_date IS NOT NULL
+            GROUP BY DATE_FORMAT(close_date, '%Y-%m')
+            ORDER BY month");
+
+    $funnel = fetchAllRows($pdo, "SELECT
+                COUNT(*)                                                          AS total,
+                SUM(CASE WHEN deal_stage <> 'Prospecting' THEN 1 ELSE 0 END)      AS engaged,
+                SUM(CASE WHEN deal_stage IN ('Won', 'Lost') THEN 1 ELSE 0 END)    AS closed,
+                SUM(CASE WHEN deal_stage = 'Won' THEN 1 ELSE 0 END)               AS won
+            FROM sales_pipeline")[0];
+
+    $regions = fetchAllRows($pdo, "SELECT
+                st.regional_office,
+                COUNT(DISTINCT st.sales_agent)                                    AS agents,
+                SUM(CASE WHEN sp.deal_stage = 'Won'  THEN 1 ELSE 0 END)           AS won_count,
+                SUM(CASE WHEN sp.deal_stage = 'Lost' THEN 1 ELSE 0 END)           AS lost_count,
+                COALESCE(SUM(CASE WHEN sp.deal_stage = 'Won' THEN sp.close_value END), 0) AS won_revenue
+            FROM sales_teams st
+            LEFT JOIN sales_pipeline sp ON sp.sales_agent = st.sales_agent
+            GROUP BY st.regional_office
+            ORDER BY won_revenue DESC");
+
+    $topAgents = fetchAllRows($pdo, "SELECT
+                sp.sales_agent,
+                st.manager,
+                st.regional_office,
+                SUM(CASE WHEN sp.deal_stage = 'Won'  THEN 1 ELSE 0 END)           AS won_count,
+                SUM(CASE WHEN sp.deal_stage = 'Lost' THEN 1 ELSE 0 END)           AS lost_count,
+                COALESCE(SUM(CASE WHEN sp.deal_stage = 'Won' THEN sp.close_value END), 0) AS won_revenue
+            FROM sales_pipeline sp
+            JOIN sales_teams st ON st.sales_agent = sp.sales_agent
+            WHERE sp.deal_stage IN ('Won', 'Lost')
+            GROUP BY sp.sales_agent, st.manager, st.regional_office
+            ORDER BY won_revenue DESC, sp.sales_agent
+            LIMIT 10");
+
+    return [
+        'kpis'                => $kpis,
+        'monthly_revenue'     => $monthlyRevenue,
+        'funnel'              => $funnel,
+        'products'            => getSalesOpportunityAnalysis($pdo, []),
+        'establishment_years' => getEstablishmentYearRevenueAnalysis($pdo, []),
+        'regions'             => $regions,
+        'top_agents'          => $topAgents,
+        'data_quality'        => getDataQualitySummary($pdo),
+    ];
+}
+
+/**
+ * ETL data-quality evidence, comparing the raw rows the ETL landed in
+ * sales_pipeline_staging with the cleaned warehouse. Returns null when the
+ * staging table is missing or empty (e.g. a database imported without it),
+ * so the rest of the dashboard still loads.
+ */
+function getDataQualitySummary(PDO $pdo): ?array
+{
+    try {
+        $summary = fetchAllRows($pdo, "SELECT
+                (SELECT COUNT(*) FROM sales_pipeline_staging)                     AS staged_rows,
+                (SELECT COUNT(*) FROM sales_pipeline)                             AS loaded_rows,
+                (SELECT COUNT(*)
+                   FROM sales_pipeline_staging s
+                   JOIN sales_pipeline w ON w.opportunity_id = s.opportunity_id
+                  WHERE s.product COLLATE utf8mb4_bin <> w.product)               AS products_standardised,
+                (SELECT SUM((COALESCE(account, '') = '') + (COALESCE(engage_date, '') = '')
+                          + (COALESCE(close_date, '') = '') + (COALESCE(close_value, '') = ''))
+                   FROM sales_pipeline_staging)                                   AS empty_values_to_null,
+                (SELECT COUNT(*)
+                   FROM sales_pipeline sp
+                   LEFT JOIN products p     ON p.product = sp.product
+                   LEFT JOIN sales_teams t  ON t.sales_agent = sp.sales_agent
+                   LEFT JOIN accounts a     ON a.account = sp.account
+                  WHERE p.product IS NULL OR t.sales_agent IS NULL
+                     OR (sp.account IS NOT NULL AND a.account IS NULL))           AS orphan_rows,
+                (SELECT COUNT(*) FROM sales_pipeline
+                  WHERE deal_stage IN ('Won', 'Lost')
+                    AND (account IS NULL OR close_date IS NULL OR close_value IS NULL
+                         OR close_date < engage_date))                            AS rule_violations")[0];
+    } catch (PDOException $e) {
+        error_log('[queryEngine] Data quality summary unavailable: ' . $e->getMessage());
+        return null;
+    }
+
+    return (int) $summary['staged_rows'] > 0 ? $summary : null;
+}
+
 // -----------------------------------------------------------------------
 // Request dispatch
 // -----------------------------------------------------------------------
@@ -294,6 +418,13 @@ try {
             break;
         case 'sales_opportunity_analysis':
             $data = getSalesOpportunityAnalysis($pdo, $request);
+            break;
+        case 'dashboard_summary':
+            respond(true, [
+                'action'      => $action,
+                'generatedAt' => date(DATE_ATOM),
+                'sections'    => getDashboardSummary($pdo),
+            ]);
             break;
         default:
             // Unreachable due to whitelist check above, kept for safety.
