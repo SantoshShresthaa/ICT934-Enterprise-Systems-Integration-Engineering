@@ -214,6 +214,23 @@ function buildTests(array $app, array $brokenDb, array &$countsBefore): array
                     . '; raw error in response: ' . ($leaked ? 'yes' : 'no')];
             },
         ],
+        [
+            'name'     => 'Dashboard ignores injected parameters',
+            'input'    => "action=dashboard_summary&deal_stage=' OR 1=1;--&year_from=0 UNION SELECT",
+            'expected' => 'HTTP 200, same aggregates as a clean request; tables confirmed unmodified afterwards',
+            'run'      => function () use ($app, $unmodified): array {
+                [$cleanStatus, $clean] = request('GET', $app['url'], ['action' => 'dashboard_summary']);
+                [$status, $json] = request('GET', $app['url'], [
+                    'action' => 'dashboard_summary', 'deal_stage' => "' OR 1=1;--", 'year_from' => '0 UNION SELECT',
+                ]);
+                [$intact, $counts] = $unmodified();
+                $same = $cleanStatus === 200
+                    && ($json['data']['sections'] ?? null) === ($clean['data']['sections'] ?? false);
+                $pass = $status === 200 && ($json['success'] ?? false) === true && $same && $intact;
+                return [$pass, describe($status, $json) . '; identical to clean request: ' . ($same ? 'yes' : 'no')
+                    . "; tables unchanged: {$counts}"];
+            },
+        ],
     ];
 }
 

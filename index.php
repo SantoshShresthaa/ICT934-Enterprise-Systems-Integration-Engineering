@@ -153,7 +153,75 @@
     .search input { min-width: 0; width: 100%; }
   }
   @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+
+  /* Overview dashboard */
+  .dash-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .span-4 { grid-column: span 4; }
+  .span-6 { grid-column: span 6; }
+  .span-8 { grid-column: span 8; }
+  .panel { padding: 16px 18px 18px; min-width: 0; }
+  .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+  .panel-head h2 { margin: 0; font-size: 15px; }
+  .panel-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  .panel-link { color: var(--primary); font-size: 12.5px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .panel-link:hover { text-decoration: underline; }
+  .chart-box { position: relative; height: 280px; }
+  .chart-box.tall { height: 320px; }
+  .chart-box.short { height: 200px; }
+  .is-loading .chart-box canvas { visibility: hidden; }
+  .is-loading .chart-box::after {
+    content: ""; position: absolute; inset: 0; border-radius: 8px;
+    background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 50%, #eef2f7 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite;
+  }
+  .chart-box.no-chart canvas { display: none; }
+  .chart-box.no-chart::before {
+    content: "Chart unavailable: the Chart.js library could not be loaded (internet connection required).";
+    position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; color: var(--muted);
+    border: 1px dashed var(--border); border-radius: 8px;
+  }
+  .panel-body .skeleton + .skeleton { margin-top: 12px; }
+
+  .funnel-step + .funnel-step { margin-top: 14px; }
+  .funnel-top { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+  .funnel-top strong { font-variant-numeric: tabular-nums; }
+  .funnel-bar { height: 10px; border-radius: 5px; background: var(--border-soft); margin: 6px 0 4px; overflow: hidden; }
+  .funnel-bar span { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #6366f1, #22d3ee); }
+  .funnel-step.won .funnel-bar span { background: linear-gradient(90deg, #16a34a, #4ade80); }
+  .funnel-sub { font-size: 12px; color: var(--muted); }
+  .panel-note { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-soft); font-size: 12.5px; color: var(--muted); }
+
+  .mini-table td, .mini-table th { padding: 8px 10px; }
+  .mini-table th { position: static; padding: 8px 10px; }
+  .mini-table .sub { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+  .rank { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: var(--border-soft); font-size: 12px; font-weight: 700; color: var(--muted); }
+  .rank.top { background: var(--primary-soft); color: var(--primary-dark); }
+
+  .region-stats { margin-top: 12px; }
+  .region-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .region-row + .region-row { border-top: 1px solid var(--border-soft); }
+  .region-row .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .region-row .name { font-weight: 600; flex: 1; }
+  .region-row .muted { color: var(--muted); font-size: 12px; }
+
+  .panel .table-wrap { max-height: none; }
+  .dq-status { display: inline-block; white-space: nowrap; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .dq-status.ok { background: var(--success-soft); color: var(--success); }
+  .dq-status.warn { background: #fef3c7; color: #b45309; }
+  .dq-list { list-style: none; margin: 0; padding: 0; }
+  .dq-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 13px; }
+  .dq-list li + li { border-top: 1px solid var(--border-soft); }
+  .dq-list .icon { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 11px; font-weight: 700; }
+  .dq-list .icon.ok { background: var(--success-soft); color: var(--success); }
+  .dq-list .icon.info { background: var(--primary-soft); color: var(--primary-dark); }
+  .dq-list .icon.warn { background: #fef3c7; color: #b45309; }
+  .dq-list .label { flex: 1; }
+  .dq-list .value { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  @media (max-width: 1100px) { .span-4, .span-6, .span-8 { grid-column: span 12; } }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+        integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 </head>
 <body>
 
@@ -165,8 +233,7 @@
       </div>
       <div>CRM Insights<small>Sales Data Warehouse</small></div>
     </div>
-    <div class="nav-label">Reports &amp; Analysis</div>
-    <nav class="nav" id="nav" aria-label="Reports"></nav>
+    <nav class="nav" id="nav" aria-label="Pages"></nav>
   </aside>
 
   <main class="main">
@@ -182,7 +249,74 @@
 
     <section class="kpis" id="kpis" aria-label="Summary"></section>
 
-    <section class="card" aria-labelledby="table-title">
+    <section id="dashboard" aria-label="Overview dashboard" hidden>
+      <div class="card state error" id="dash-error" hidden></div>
+      <div class="dash-grid" id="dash-grid">
+        <article class="card panel span-8">
+          <div class="panel-head">
+            <div><h2>Monthly Won Revenue</h2><p>Revenue from won deals by close month, with the monthly win rate</p></div>
+            <a class="panel-link" href="#opportunities">View report →</a>
+          </div>
+          <div class="chart-box"><canvas id="chart-monthly" role="img" aria-label="Bar chart of won revenue per month with a win rate line"></canvas></div>
+        </article>
+
+        <article class="card panel span-4">
+          <div class="panel-head">
+            <div><h2>Sales Funnel</h2><p>How far opportunities progress through the pipeline</p></div>
+          </div>
+          <div class="panel-body" id="funnel"></div>
+        </article>
+
+        <article class="card panel span-6">
+          <div class="panel-head">
+            <div><h2>Revenue by Product</h2><p>Total won value per product, coloured by series</p></div>
+            <a class="panel-link" href="#analysis">View analysis →</a>
+          </div>
+          <div class="chart-box"><canvas id="chart-products" role="img" aria-label="Horizontal bar chart of won revenue by product"></canvas></div>
+        </article>
+
+        <article class="card panel span-6">
+          <div class="panel-head">
+            <div><h2>Won vs Lost by Product</h2><p>Closed deals per product; hover for the win rate</p></div>
+            <a class="panel-link" href="#analysis">View analysis →</a>
+          </div>
+          <div class="chart-box"><canvas id="chart-winloss" role="img" aria-label="Stacked bar chart of won and lost deals by product"></canvas></div>
+        </article>
+
+        <article class="card panel span-8">
+          <div class="panel-head">
+            <div><h2>Revenue by Establishment Year</h2><p>Total annual revenue of client accounts and the number of accounts, by year founded</p></div>
+            <a class="panel-link" href="#revenue">View report →</a>
+          </div>
+          <div class="chart-box tall"><canvas id="chart-years" role="img" aria-label="Bar chart of account revenue by establishment year"></canvas></div>
+        </article>
+
+        <article class="card panel span-4">
+          <div class="panel-head">
+            <div><h2>Regional Performance</h2><p>Share of won revenue by regional office</p></div>
+          </div>
+          <div class="chart-box short"><canvas id="chart-regions" role="img" aria-label="Doughnut chart of won revenue share by regional office"></canvas></div>
+          <div class="region-stats" id="region-stats"></div>
+        </article>
+
+        <article class="card panel span-8">
+          <div class="panel-head">
+            <div><h2>Top Sales Agents</h2><p>Ranked by won revenue across all closed deals</p></div>
+          </div>
+          <div class="panel-body" id="top-agents"></div>
+        </article>
+
+        <article class="card panel span-4">
+          <div class="panel-head">
+            <div><h2>ETL Data Quality</h2><p>Raw staging data compared with the cleaned warehouse</p></div>
+            <span id="dq-status"></span>
+          </div>
+          <div class="panel-body" id="data-quality"></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="card" id="results" aria-labelledby="table-title">
       <div class="table-header">
         <div>
           <h2 id="table-title">Results</h2>
@@ -209,6 +343,7 @@
 const PAGE_SIZE = 25;
 
 const ICONS = {
+  overview: '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
   products: '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M3 11h18M9 7V3h6v4"/>',
   opportunities: '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
   revenue: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -328,6 +463,18 @@ const REPORTS = {
   },
 };
 
+const OVERVIEW = {
+  title: 'Overview',
+  description: 'Headline sales performance, pipeline and data quality across the whole warehouse.',
+};
+
+const COLORS = {
+  primary: '#4f46e5', primarySoft: 'rgba(79, 70, 229, .12)',
+  cyan: '#06b6d4', amber: '#f59e0b', won: '#22c55e', lost: '#f87171',
+};
+const SERIES_COLORS = { GTX: COLORS.primary, MG: COLORS.cyan, GTK: COLORS.amber };
+const REGION_COLORS = [COLORS.primary, COLORS.cyan, COLORS.amber, '#a855f7', '#64748b'];
+
 const NUMERIC_TYPES = new Set(['currency', 'millions', 'int', 'bar']);
 
 // ---------------------------------------------------------------------
@@ -335,9 +482,15 @@ const NUMERIC_TYPES = new Set(['currency', 'millions', 'int', 'bar']);
 // ---------------------------------------------------------------------
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+const usdWhole = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const compactNumber = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const monthFormat = new Intl.DateTimeFormat('en-AU', { month: 'short', year: 'numeric' });
 
 const fmt = {
   currency: v => usd.format(Number(v) || 0),
+  money: v => usdWhole.format(Number(v) || 0),
+  compact: v => '$' + compactNumber.format(Number(v) || 0),
+  month: v => monthFormat.format(new Date(v + '-01T00:00:00')),
   millions: v => '$' + (Number(v) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'M',
   int: v => (Number(v) || 0).toLocaleString('en-US'),
   percent: v => (v * 100).toFixed(1) + '%',
@@ -363,7 +516,7 @@ function escapeHtml(value) {
 // State
 // ---------------------------------------------------------------------
 const state = {
-  report: 'products',
+  report: 'overview',
   rows: [],
   filters: {},
   sort: null,
@@ -378,14 +531,24 @@ const $ = id => document.getElementById(id);
 // Rendering
 // ---------------------------------------------------------------------
 function renderNav() {
-  $('nav').innerHTML = Object.entries(REPORTS).map(([key, report]) => `
+  const button = (key, title) => `
     <button type="button" data-report="${key}" ${key === state.report ? 'aria-current="page"' : ''}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[key]}</svg>
-      ${escapeHtml(report.title)}
-    </button>`).join('');
+      ${escapeHtml(title)}
+    </button>`;
+  $('nav').innerHTML = '<div class="nav-label">Dashboard</div>'
+    + button('overview', OVERVIEW.title)
+    + '<div class="nav-label" style="margin-top:16px">Reports &amp; Analysis</div>'
+    + Object.entries(REPORTS).map(([key, report]) => button(key, report.title)).join('');
 }
 
 function renderToolbar() {
+  if (state.report === 'overview') {
+    $('toolbar').innerHTML = `<span class="hint">Live summary of the data warehouse. Open a report for the full detail.</span>
+       <div class="spacer"></div>
+       <button class="btn" type="button" id="apply">Refresh</button>`;
+    return;
+  }
   const report = REPORTS[state.report];
   const values = state.filters[state.report] || {};
 
@@ -410,13 +573,15 @@ function renderToolbar() {
 }
 
 function renderKpis(loading = false) {
-  const report = REPORTS[state.report];
   if (loading) {
     $('kpis').innerHTML = Array.from({ length: 4 }, () =>
       '<div class="card kpi"><div class="skeleton" style="width:40%;height:12px"></div><div class="skeleton"></div></div>').join('');
     return;
   }
-  const kpis = report.kpis(state.rows);
+  renderKpiCards(REPORTS[state.report].kpis(state.rows));
+}
+
+function renderKpiCards(kpis) {
   $('kpis').innerHTML = kpis.map(k => `
     <div class="card kpi">
       <div class="kpi-label">${escapeHtml(k.label)}</div>
@@ -575,20 +740,333 @@ async function loadReport() {
   }
 }
 
+// ---------------------------------------------------------------------
+// Overview dashboard
+// ---------------------------------------------------------------------
+const charts = {};
+
+if (window.Chart) {
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.borderColor = '#eef2f7';
+  Chart.defaults.maintainAspectRatio = false;
+  Chart.defaults.plugins.legend.labels.usePointStyle = true;
+  Chart.defaults.plugins.legend.labels.boxWidth = 8;
+  Chart.defaults.plugins.legend.labels.boxHeight = 8;
+  Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
+  Chart.defaults.plugins.tooltip.padding = 10;
+  Chart.defaults.plugins.tooltip.cornerRadius = 8;
+}
+
+function drawChart(id, config) {
+  const canvas = $(id);
+  if (!window.Chart) {
+    canvas.parentElement.classList.add('no-chart');
+    return;
+  }
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(canvas, config);
+}
+
+const winRate = (won, lost) => (Number(won) + Number(lost)) ? Number(won) / (Number(won) + Number(lost)) : 0;
+
+async function loadDashboard() {
+  const requestId = ++state.requestId;
+  const grid = $('dash-grid');
+  $('dash-error').hidden = true;
+  grid.hidden = false;
+  grid.classList.add('is-loading');
+  $('generated').textContent = '';
+  renderKpis(true);
+  const skeleton = '<div class="skeleton"></div>'.repeat(5);
+  ['funnel', 'top-agents', 'data-quality', 'region-stats'].forEach(id => { $(id).innerHTML = skeleton; });
+  $('dq-status').innerHTML = '';
+
+  try {
+    const res = await fetch('queryEngine.php?action=dashboard_summary');
+    const json = await res.json();
+    if (requestId !== state.requestId) return;
+    if (!json.success) throw new Error(json.error || 'Unknown error.');
+
+    const s = json.data.sections;
+    grid.classList.remove('is-loading');
+    $('generated').textContent = 'Updated ' + new Date(json.data.generatedAt).toLocaleString('en-AU');
+    renderOverviewKpis(s.kpis);
+    renderMonthlyChart(s.monthly_revenue);
+    renderFunnel(s.funnel);
+    renderProductCharts(s.products);
+    renderYearChart(s.establishment_years);
+    renderRegions(s.regions);
+    renderTopAgents(s.top_agents);
+    renderDataQuality(s.data_quality);
+  } catch (err) {
+    if (requestId !== state.requestId) return;
+    grid.hidden = true;
+    $('kpis').innerHTML = '';
+    const message = err instanceof SyntaxError || err instanceof TypeError
+      ? 'Could not reach the query engine. Please try again.' : err.message;
+    $('dash-error').innerHTML = `<strong>Unable to load the dashboard</strong>${escapeHtml(message)}`;
+    $('dash-error').hidden = false;
+  }
+}
+
+function renderOverviewKpis(k) {
+  renderKpiCards([
+    { label: 'Won Revenue', value: fmt.money(k.won_revenue), sub: `${fmt.int(k.won_count)} deals won` },
+    { label: 'Win Rate', value: fmt.percent(winRate(k.won_count, k.lost_count)),
+      sub: `${fmt.int(k.won_count)} won · ${fmt.int(k.lost_count)} lost` },
+    { label: 'Average Won Deal', value: fmt.money(k.average_won_value),
+      sub: k.average_sales_cycle_days !== null ? `Average sales cycle ${Number(k.average_sales_cycle_days).toFixed(0)} days` : '' },
+    { label: 'Open Pipeline', value: `${fmt.int(k.open_count)} deals`,
+      sub: `≈ ${fmt.compact(k.open_pipeline_value)} at list price` },
+  ]);
+}
+
+function renderMonthlyChart(rows) {
+  drawChart('chart-monthly', {
+    data: {
+      labels: rows.map(r => fmt.month(r.month)),
+      datasets: [
+        { type: 'bar', label: 'Won revenue', data: rows.map(r => Number(r.won_revenue)),
+          backgroundColor: COLORS.primary, borderRadius: 6, maxBarThickness: 36, yAxisID: 'y', order: 2 },
+        { type: 'line', label: 'Win rate', data: rows.map(r => +(winRate(r.won_count, r.lost_count) * 100).toFixed(1)),
+          borderColor: COLORS.cyan, backgroundColor: COLORS.cyan, tension: .35, pointRadius: 3, yAxisID: 'y1', order: 1 },
+      ],
+    },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: {
+          label: c => c.dataset.yAxisID === 'y1' ? ` Win rate: ${c.parsed.y}%` : ` Won revenue: ${fmt.money(c.parsed.y)}`,
+          afterBody: items => {
+            const r = rows[items[0].dataIndex];
+            return `${fmt.int(r.won_count)} won · ${fmt.int(r.lost_count)} lost`;
+          },
+        } },
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { callback: v => fmt.compact(v) } },
+        y1: { position: 'right', min: 0, max: 100, grid: { drawOnChartArea: false }, ticks: { callback: v => v + '%' } },
+      },
+    },
+  });
+}
+
+function renderFunnel(f) {
+  const total = Number(f.total) || 0;
+  const steps = [
+    { label: 'All opportunities', value: Number(f.total) },
+    { label: 'Engaged', value: Number(f.engaged) },
+    { label: 'Closed (won or lost)', value: Number(f.closed) },
+    { label: 'Won', value: Number(f.won), won: true },
+  ];
+  $('funnel').innerHTML = steps.map((step, i) => {
+    const share = total ? step.value / total : 0;
+    const previous = i ? steps[i - 1].value : 0;
+    const conversion = i && previous ? ` · ${fmt.percent(step.value / previous)} of previous step` : '';
+    return `<div class="funnel-step${step.won ? ' won' : ''}">
+        <div class="funnel-top"><span>${escapeHtml(step.label)}</span><strong>${escapeHtml(fmt.int(step.value))}</strong></div>
+        <div class="funnel-bar"><span style="width:${(share * 100).toFixed(1)}%"></span></div>
+        <div class="funnel-sub">${escapeHtml(fmt.percent(share))} of pipeline${escapeHtml(conversion)}</div>
+      </div>`;
+  }).join('') + `<div class="panel-note">Still open: ${escapeHtml(fmt.int(total - Number(f.engaged)))} prospecting
+      and ${escapeHtml(fmt.int(Number(f.engaged) - Number(f.closed)))} engaging deals.</div>`;
+}
+
+function renderProductCharts(rows) {
+  const products = [...rows].sort((a, b) => Number(b.total_value) - Number(a.total_value));
+  const labels = products.map(p => p.product);
+  const series = [...new Set(products.map(p => p.series))];
+
+  drawChart('chart-products', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: series.map(name => ({
+        label: `${name} series`,
+        data: products.map(p => p.series === name ? Number(p.total_value) : null),
+        backgroundColor: SERIES_COLORS[name] || COLORS.primary, borderRadius: 5, maxBarThickness: 22,
+      })),
+    },
+    options: {
+      indexAxis: 'y',
+      skipNull: true,
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { filter: item => item.raw !== null, callbacks: {
+          label: c => ` ${fmt.money(c.parsed.x)}`,
+          afterLabel: c => `Average deal ${fmt.money(products[c.dataIndex].average_value)}`,
+        } },
+      },
+      scales: {
+        x: { stacked: true, beginAtZero: true, ticks: { callback: v => fmt.compact(v) } },
+        y: { stacked: true, grid: { display: false } },
+      },
+    },
+  });
+
+  drawChart('chart-winloss', {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Won', data: products.map(p => Number(p.won_count)), backgroundColor: COLORS.won, borderRadius: 4, maxBarThickness: 22 },
+        { label: 'Lost', data: products.map(p => Number(p.lost_count)), backgroundColor: COLORS.lost, borderRadius: 4, maxBarThickness: 22 },
+      ],
+    },
+    options: {
+      indexAxis: 'y',
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: {
+          label: c => ` ${c.dataset.label}: ${fmt.int(c.parsed.x)}`,
+          footer: items => {
+            const p = products[items[0].dataIndex];
+            return `Win rate ${fmt.percent(winRate(p.won_count, p.lost_count))}`;
+          },
+        } },
+      },
+      scales: {
+        x: { stacked: true, beginAtZero: true },
+        y: { stacked: true, grid: { display: false } },
+      },
+    },
+  });
+}
+
+function renderYearChart(rows) {
+  drawChart('chart-years', {
+    data: {
+      labels: rows.map(r => String(r.year_established)),
+      datasets: [
+        { type: 'bar', label: 'Total revenue', data: rows.map(r => Number(r.total_revenue)),
+          backgroundColor: COLORS.primary, borderRadius: 4, yAxisID: 'y', order: 2 },
+        { type: 'line', label: 'Accounts', data: rows.map(r => Number(r.number_of_accounts)),
+          borderColor: COLORS.amber, backgroundColor: COLORS.amber, pointRadius: 2.5, borderWidth: 2, yAxisID: 'y1', order: 1 },
+      ],
+    },
+    options: {
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end' },
+        tooltip: { callbacks: {
+          label: c => c.dataset.yAxisID === 'y1'
+            ? ` Accounts: ${fmt.int(c.parsed.y)}`
+            : ` Total revenue: ${fmt.millions(c.parsed.y)} (${fmt.compact(c.parsed.y * 1e6)})`,
+        } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { autoSkip: true, maxRotation: 0 } },
+        y: { beginAtZero: true, ticks: { callback: v => fmt.compact(v * 1e6) } },
+        y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { precision: 0 } },
+      },
+    },
+  });
+}
+
+function renderRegions(rows) {
+  const totalRevenue = sum(rows, r => r.won_revenue);
+  drawChart('chart-regions', {
+    type: 'doughnut',
+    data: {
+      labels: rows.map(r => r.regional_office),
+      datasets: [{ data: rows.map(r => Number(r.won_revenue)), backgroundColor: REGION_COLORS, borderWidth: 2, borderColor: '#fff' }],
+    },
+    options: {
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => ` ${fmt.money(c.parsed)} (${fmt.percent(totalRevenue ? c.parsed / totalRevenue : 0)})`,
+        } },
+      },
+    },
+  });
+
+  $('region-stats').innerHTML = rows.map((r, i) => `
+    <div class="region-row">
+      <span class="dot" style="background:${REGION_COLORS[i % REGION_COLORS.length]}"></span>
+      <span class="name">${escapeHtml(r.regional_office)} <span class="muted">· ${escapeHtml(fmt.int(r.agents))} agents</span></span>
+      <span class="muted">${escapeHtml(fmt.percent(winRate(r.won_count, r.lost_count)))} win</span>
+      <strong>${escapeHtml(fmt.compact(r.won_revenue))}</strong>
+    </div>`).join('');
+}
+
+function renderTopAgents(rows) {
+  if (!rows.length) {
+    $('top-agents').innerHTML = '<div class="state"><strong>No closed deals</strong>No agent has closed a deal yet.</div>';
+    return;
+  }
+  const max = Math.max(...rows.map(r => Number(r.won_revenue))) || 1;
+  const body = rows.map((r, i) => `
+    <tr>
+      <td><span class="rank${i < 3 ? ' top' : ''}">${i + 1}</span></td>
+      <td class="strong">${escapeHtml(r.sales_agent)}<span class="sub">Manager: ${escapeHtml(r.manager ?? '—')}</span></td>
+      <td><span class="chip">${escapeHtml(r.regional_office ?? '—')}</span></td>
+      <td class="num">${escapeHtml(fmt.int(r.won_count))}</td>
+      <td class="num">${escapeHtml(fmt.percent(winRate(r.won_count, r.lost_count)))}</td>
+      <td class="num"><div class="bar-cell">${escapeHtml(fmt.money(r.won_revenue))}
+        <div class="bar"><span style="width:${(Number(r.won_revenue) / max * 100).toFixed(1)}%"></span></div></div></td>
+    </tr>`).join('');
+  $('top-agents').innerHTML = `<div class="table-wrap"><table class="mini-table">
+      <thead><tr><th>#</th><th>Sales agent</th><th>Region</th><th class="num">Won</th><th class="num">Win rate</th><th class="num">Won revenue</th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
+}
+
+function renderDataQuality(dq) {
+  if (!dq) {
+    $('dq-status').innerHTML = '';
+    $('data-quality').innerHTML = '<div class="state"><strong>No staging data</strong>Run the ETL (etl/run_etl.sh) to populate the staging table.</div>';
+    return;
+  }
+  const rejected = Math.max(0, Number(dq.staged_rows) - Number(dq.loaded_rows));
+  const items = [
+    { label: 'Raw rows staged', value: dq.staged_rows, kind: 'info' },
+    { label: 'Rows loaded into the warehouse', value: dq.loaded_rows, kind: 'info' },
+    { label: 'Rows rejected by validation', value: rejected, kind: rejected === 0 ? 'ok' : 'warn' },
+    { label: 'Product names standardised', value: dq.products_standardised, kind: 'info' },
+    { label: 'Empty values converted to NULL', value: dq.empty_values_to_null, kind: 'info' },
+    { label: 'Orphan references', value: dq.orphan_rows, kind: Number(dq.orphan_rows) === 0 ? 'ok' : 'warn' },
+    { label: 'Business-rule violations', value: dq.rule_violations, kind: Number(dq.rule_violations) === 0 ? 'ok' : 'warn' },
+  ];
+  const passed = !items.some(item => item.kind === 'warn');
+  const symbol = { ok: '✓', info: 'i', warn: '!' };
+  $('dq-status').innerHTML = `<span class="dq-status ${passed ? 'ok' : 'warn'}">${passed ? 'All checks passed' : 'Needs review'}</span>`;
+  $('data-quality').innerHTML = `<ul class="dq-list">${items.map(item => `
+      <li><span class="icon ${item.kind}">${symbol[item.kind]}</span>
+          <span class="label">${escapeHtml(item.label)}</span>
+          <span class="value">${escapeHtml(fmt.int(item.value))}</span></li>`).join('')}</ul>`;
+}
+
 function selectReport(key) {
-  if (!REPORTS[key]) key = 'products';
+  if (key !== 'overview' && !REPORTS[key]) key = 'overview';
+  const page = key === 'overview' ? OVERVIEW : REPORTS[key];
   state.report = key;
   state.rows = [];
   state.sort = null;
   state.search = '';
   state.page = 1;
   $('search').value = '';
-  $('title').textContent = REPORTS[key].title;
-  $('description').textContent = REPORTS[key].description;
-  document.title = `${REPORTS[key].title} · CRM Sales Insights`;
+  $('title').textContent = page.title;
+  $('description').textContent = page.description;
+  document.title = `${page.title} · CRM Sales Insights`;
+  $('dashboard').hidden = key !== 'overview';
+  $('results').hidden = key === 'overview';
   renderNav();
   renderToolbar();
-  loadReport();
+  refresh();
+}
+
+function refresh() {
+  if (state.report === 'overview') {
+    loadDashboard();
+  } else {
+    loadReport();
+  }
 }
 
 function readFilters() {
@@ -630,7 +1108,9 @@ $('nav').addEventListener('click', e => {
 window.addEventListener('hashchange', () => selectReport(location.hash.slice(1)));
 
 $('toolbar').addEventListener('click', e => {
-  if (e.target.closest('#apply')) {
+  if (e.target.closest('#apply') && state.report === 'overview') {
+    loadDashboard();
+  } else if (e.target.closest('#apply')) {
     readFilters();
     state.page = 1;
     loadReport();
