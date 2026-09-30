@@ -72,8 +72,8 @@ const ALLOWED_ACTIONS = [
     'sales_opportunity_analysis',
 ];
 
-// The ETL only loads closed opportunities into sales_pipeline, so these are
-// the only deal_stage values present in the warehouse.
+// The warehouse also holds open deals (Prospecting/Engaging), but both
+// reports are about closed opportunities, so only these filters are accepted.
 const ALLOWED_DEAL_STAGES = ['Won', 'Lost'];
 
 /**
@@ -232,7 +232,8 @@ function getEstablishmentYearRevenueAnalysis(PDO $pdo, array $request): array
 /**
  * Sales Opportunity Analysis: total and average sales opportunity values
  * segmented by product. Optional ?deal_stage=Won|Lost filter; defaults to
- * all opportunities. Products with no matching opportunities are still
+ * all closed opportunities, because open deals (Prospecting/Engaging) have
+ * no close_value yet. Products with no matching opportunities are still
  * listed (with zero totals) so the full product range is always shown.
  */
 function getSalesOpportunityAnalysis(PDO $pdo, array $request): array
@@ -240,7 +241,7 @@ function getSalesOpportunityAnalysis(PDO $pdo, array $request): array
     $stage = getValidatedDealStage($request);
 
     $params = [];
-    $stageJoin = '';
+    $stageJoin = "AND sp.deal_stage IN ('Won', 'Lost')";
 
     if ($stage !== null) {
         $stageJoin = 'AND sp.deal_stage = :deal_stage';
